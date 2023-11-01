@@ -11,8 +11,11 @@ char mqttPassword[40] = ""; // Default MQTT password (can be an empty string)
 
 const char* apName = "ESP8266 Relay";
 const char* clientID = "esp8266-relay";
-const char* topic = "relay";
-const int pin = 0;
+const char* topic = "relay"; // Topic to control the relay
+
+const int LED = 16;
+const int RY1 = 5;
+const int RY2 = 4;
 
 WiFiClient wlan;
 PubSubClient mqtt(wlan);
@@ -31,7 +34,7 @@ void reconnect() {
     Serial.println("Attempting to connect to the MQTT server...");
     if (mqtt.connect(clientID, mqttUser, mqttPassword)) {
       Serial.println("MQTT reconnected");
-      mqtt.subscribe(topic);
+      mqtt.subscribe(topic); // Subscribe to the control topic
     } else {
       Serial.print("MQTT connect failed, retrying...");
       delay(2000);
@@ -51,18 +54,32 @@ void onMessage(char* topic, byte* payload, unsigned int length) {
   Serial.print("] ");
   Serial.println(payloadStr);
 
-  if (strcmp(topic, topic) == 0) {
-    // If an LED control message is received, perform the corresponding action
-    if (payloadStr == "on") {
-      digitalWrite(pin, LOW);
-    } else if (payloadStr == "off") {
-      digitalWrite(pin, HIGH);
+  if (strcmp(topic, topic) == 0) { // Compare with the control topic
+    if (payloadStr == "relay1on") {
+      digitalWrite(RY1, HIGH); // Open the first relay
+    } else if (payloadStr == "relay1off") {
+      digitalWrite(RY1, LOW); // Close the first relay
+    } else if (payloadStr == "relay2on") {
+      digitalWrite(RY2, HIGH); // Open the second relay
+    } else if (payloadStr == "relay2off") {
+      digitalWrite(RY2, LOW); // Close the second relay
+    } else if (payloadStr == "led1on") {
+      digitalWrite(LED, LOW); // Turn on the LED
+    } else if (payloadStr == "led1off") {
+      digitalWrite(LED, HIGH); // Turn off the LED
+    } else if (payloadStr == "led2on") {
+      digitalWrite(LED_BUILTIN, LOW);
+    } else if (payloadStr == "led2off") {
+      digitalWrite(LED_BUILTIN, HIGH);
     }
   }
 }
 
 void setup() {
-  pinMode(pin, OUTPUT);
+  pinMode(RY1, OUTPUT);
+  pinMode(RY2, OUTPUT);
+  pinMode(LED, OUTPUT);
+  pinMode(LED_BUILTIN, OUTPUT);
 
   WiFiManager wifiManager;
   // Add custom parameters for configuring MQTT server information
