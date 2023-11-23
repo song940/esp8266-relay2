@@ -3,12 +3,6 @@
 #include <PubSubClient.h>
 #include <WiFiManager.h>
 
-// WiFiManager settings
-char mqttServer[40] = "192.168.8.160"; // Default MQTT server
-char mqttPort[6] = "1883"; // Default MQTT port
-char mqttUser[40] = ""; // Default MQTT user (can be an empty string)
-char mqttPassword[40] = ""; // Default MQTT password (can be an empty string)
-
 const char* apName = "ESP8266 Relay";
 const char* clientID = "esp8266-relay";
 const char* topic = "relay"; // Topic to control the relay
@@ -19,24 +13,28 @@ const int RY2 = 4;
 
 WiFiClient wlan;
 PubSubClient mqtt(wlan);
+WiFiManager wifiManager;
+
+// Add custom parameters for configuring MQTT server information
+WiFiManagerParameter custom_mqtt_server("mqtt_server", "MQTT Server", "192.168.8.160", 40);
+WiFiManagerParameter custom_mqtt_port("mqtt_port", "MQTT Port", "1883", 6);
+WiFiManagerParameter custom_mqtt_user("mqtt_user", "MQTT User", "mqtt", 40);
+WiFiManagerParameter custom_mqtt_password("mqtt_password", "MQTT Password", "mqtt123", 40);
+
 
 // WiFiManager callback function
 void saveConfigCallback() {
   Serial.println("Configuration saved");
-  strcpy(mqttServer, WiFiManagerParameter("mqtt_server").getValue());
-  strcpy(mqttPort, WiFiManagerParameter("mqtt_port").getValue());
-  strcpy(mqttUser, WiFiManagerParameter("mqtt_user").getValue());
-  strcpy(mqttPassword, WiFiManagerParameter("mqtt_password").getValue());
 }
 
 void reconnect() {
   while (!mqtt.connected()) {
     Serial.println("Attempting to connect to the MQTT server...");
-    if (mqtt.connect(clientID, mqttUser, mqttPassword)) {
-      Serial.println("MQTT reconnected");
+    if (mqtt.connect(clientID)) {
+      Serial.println("MQTT connected");
       mqtt.subscribe(topic); // Subscribe to the control topic
     } else {
-      Serial.print("MQTT connect failed, retrying...");
+      Serial.println("MQTT connect failed, retrying...");
       delay(2000);
     }
   }
@@ -76,17 +74,13 @@ void onMessage(char* topic, byte* payload, unsigned int length) {
 }
 
 void setup() {
+
+  Serial.begin(115200);
+
   pinMode(RY1, OUTPUT);
   pinMode(RY2, OUTPUT);
   pinMode(LED, OUTPUT);
   pinMode(LED_BUILTIN, OUTPUT);
-
-  WiFiManager wifiManager;
-  // Add custom parameters for configuring MQTT server information
-  WiFiManagerParameter custom_mqtt_server("mqtt_server", "MQTT Server", mqttServer, 40);
-  WiFiManagerParameter custom_mqtt_port("mqtt_port", "MQTT Port", mqttPort, 6);
-  WiFiManagerParameter custom_mqtt_user("mqtt_user", "MQTT User", mqttUser, 40);
-  WiFiManagerParameter custom_mqtt_password("mqtt_password", "MQTT Password", mqttPassword, 40);
 
   wifiManager.setSaveConfigCallback(saveConfigCallback);
   wifiManager.addParameter(&custom_mqtt_server);
@@ -98,7 +92,10 @@ void setup() {
   wifiManager.autoConnect(apName);
 
   // Set the MQTT server and port
-  mqtt.setServer(mqttServer, atoi(mqttPort));
+  const char * mqtt_server = custom_mqtt_server.getValue();
+  int mqtt_port = atoi(custom_mqtt_port.getValue());
+  Serial.println(mqtt_server);
+  mqtt.setServer(mqtt_server, mqtt_port);
   mqtt.setCallback(onMessage);
   mqtt.setClient(wlan);
 }
